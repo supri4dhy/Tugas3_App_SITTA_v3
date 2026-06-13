@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SITTA v3.0 - SPA</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Fallback dummy data jika fetch local file terblokir CORS browser -->
+    <script src="js/data.js"></script>
+    <script src="js/dataBahanAjar.js"></script>
+    <style>
+        [v-cloak] { display: none; }
+        .app-header {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        @media (max-width: 768px) {
+            .app-header {
+                flex-direction: column;
+                gap: 1rem;
+            }
+            .app-header nav {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="app" v-cloak>
+        <!-- Not Logged In -->
+        <section v-if="!isLoggedIn">
+            <login-form @login-success="onLoginSuccess" @show-biodata="showBiodataModal = true"></login-form>
+        </section>
+
+        <!-- Logged In -->
+        <section v-else>
+            <header class="app-header">
+                <div style="display: flex; align-items: center; gap: 2rem; flex-wrap: wrap;">
+                    <h2 style="color: var(--primary); margin: 0; font-weight: 800;">SITTA v3.0</h2>
+                    <nav style="display: flex; gap: 0.5rem;">
+                        <button class="btn" :class="currentTab === 'dashboard' ? 'btn-primary' : 'btn-secondary'" @click="currentTab='dashboard'">Dashboard</button>
+                        <button class="btn" :class="currentTab === 'stok' ? 'btn-primary' : 'btn-secondary'" @click="currentTab='stok'">Stok</button>
+                         <button class="btn" :class="currentTab === 'tracking' ? 'btn-primary' : 'btn-secondary'" @click="currentTab='tracking'; $refs.doTracking && $refs.doTracking.clearSearch()">Tracking DO</button>
+                        <button v-if="isAdmin" class="btn" :class="currentTab === 'order' ? 'btn-primary' : 'btn-secondary'" @click="currentTab='order'">Pemesanan DO</button>
+                    </nav>
+                </div>
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <div style="text-align: right;">
+                        <div style="font-weight: bold; color: var(--text-main);">{{ user.nama }}</div>
+                        <div style="font-size: 0.8rem; color: var(--text-muted);">{{ user.role }}</div>
+                    </div>
+                    <button class="btn btn-secondary" @click="logout" style="padding: 0.5rem 1rem;">Keluar</button>
+                </div>
+            </header>
+
+            <main class="container" style="padding: 2rem 0; margin-top: 1rem;">
+                <div v-if="isLoading" style="text-align: center; padding: 3rem; color: var(--text-muted);">
+                    Memuat data...
+                </div>
+                
+                <div v-else>
+                    <section v-show="currentTab === 'dashboard'" class="animate-fade-in">
+                        <header style="margin-bottom: 2.5rem;">
+                            <h2 style="font-weight: 800; margin-bottom: 0.5rem; color: var(--text-main);">Dashboard Aplikasi SITTA</h2>
+                            <p style="font-size: 1.1rem; color: var(--text-muted);">{{ greetingMessage }}</p>
+                            <h1 style="font-size: 2.2rem; margin-top: 0.5rem; color: var(--primary);">Halo, {{ user.nama }}!</h1>
+                        </header>
+                        <div class="stats-grid" style="margin-bottom: 2rem;">
+                            <div class="stat-card glass-card">
+                                <span style="color: var(--text-muted); font-weight: 500;">Peran Anda</span>
+                                <span class="stat-value" style="font-size: 1.5rem;">{{ user.role }}</span>
+                            </div>
+                            <div class="stat-card glass-card">
+                                <span style="color: var(--text-muted); font-weight: 500;">Lokasi Kerja</span>
+                                <span class="stat-value" style="font-size: 1.5rem;">{{ user.lokasi || 'Pusat' }}</span>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section v-show="currentTab === 'stok'" class="animate-fade-in">
+                        <ba-stock-table 
+                            :stok="stokList" 
+                            :upbjj-list="upbjjList" 
+                            :kategori-list="kategoriList" 
+                            :is-admin="isAdmin"
+                            @add-stok="handleAddStok"
+                            @update-stok="handleUpdateStok"
+                            @delete-stok="handleDeleteStok">
+                        </ba-stock-table>
+                    </section>
+
+                    <section v-show="currentTab === 'tracking'" class="animate-fade-in">
+                        <do-tracking 
+                            ref="doTracking"
+                            :tracking-data="trackingData" 
+                            :is-admin="isAdmin" 
+                            :user="user"
+                            :pengiriman-list="pengirimanList"
+                            :active-tab="currentTab"
+                            @update-progress="handleUpdateProgress">
+                        </do-tracking>
+                    </section>
+
+                    <section v-show="currentTab === 'order'" class="animate-fade-in">
+                        <order-form 
+                            :pengiriman-list="pengirimanList" 
+                            :paket-list="paketList" 
+                            :upbjj-list="upbjjList"
+                            @order-submitted="handleOrderSubmitted">
+                        </order-form>
+                    </section>
+                </div>
+            </main>
+        </section>
+        
+        <!-- Biodata Modal -->
+        <div class="modal" :class="{ active: showBiodataModal }" style="align-items: center; justify-content: center; z-index: 9999;">
+            <div class="modal-content animate-fade-in" style="max-width: 850px; width: 95%; max-height: 85vh; padding: 0; background: transparent; border: none; box-shadow: none; position: relative;">
+                <div class="modal-close" @click="showBiodataModal = false" style="position: absolute; top: 10px; right: 10px; width: 35px; height: 35px; background: white; color: var(--primary); font-weight: 800; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.3); z-index: 1000; cursor: pointer;">&times;</div>
+                <iframe v-if="showBiodataModal" src="biodata.html" style="width: 100%; height: 550px; border: none; border-radius: 20px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6); display: block;"></iframe>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= TEMPLATES ================= -->
+
+    <!-- Login Template -->
+    <template id="tpl-login">
+        <div class="login-split-wrapper" style="position: relative;">
+            <div style="position: absolute; top: 1.5rem; right: 1.5rem; z-index: 10;">
+                <button @click="$emit('show-biodata')" style="border: none; display: flex; align-items: center; gap: 0.5rem; background: rgba(0,0,0,0.05); padding: 0.5rem 1rem; border-radius: 30px; color: var(--primary); font-weight: 600; cursor: pointer; backdrop-filter: blur(5px);">
+                    <span>👤 Lihat Biodata</span>
+                </button>
+            </div>
+            <div class="login-info-side">
+                <div class="login-info-content animate-fade-in">
+                    <img src="assets/logo_ut.png" alt="Logo UT" style="width: 80px; margin-bottom: 2rem; filter: brightness(0) invert(1);">
+                    <h1>SITTA UT v3.0</h1>
+                    <p>Sistem Informasi Tugas Tata Administrasi Universitas Terbuka. Solusi digital untuk pengelolaan stok bahan ajar, pelacakan pengiriman, dan pelaporan administrasi.</p>
+                </div>
+            </div>
+            <div class="login-form-side active">
+                <div class="login-card animate-fade-in">
+                    <div class="login-header">
+                        <div class="logo-container" style="text-align: center; margin-bottom: 1.5rem;">
+                            <img src="assets/logo_ut.png" alt="Logo UT" class="ut-logo">
+                        </div>
+                        <div class="logo" style="justify-content: center; margin-bottom: 0.5rem;">
+                            <span>Masuk ke Akun</span>
+                        </div>
+                    </div>
+                    <form @submit.prevent="handleLogin">
+                        <div v-if="errorMsg" style="background: rgba(239,68,68,0.1); color: #ef4444; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; text-align: center;">
+                            {{ errorMsg }}
+                        </div>
+                        <div class="form-group">
+                            <label>Alamat Email</label>
+                            <input type="email" v-model="email" class="form-control" required placeholder="admin@ut.ac.id">
+                        </div>
+                        <div class="form-group">
+                            <label>Kata Sandi</label>
+                            <input type="password" v-model="password" class="form-control" required placeholder="••••••••">
+                        </div>
+                        <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center; height: 50px;">Masuk Sekarang</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <!-- Badge Template -->
+    <template id="tpl-badge">
+        <span>
+            <span v-if="statusType === 'kosong'" style="color: #ef4444; background: rgba(239,68,68,0.1); padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: bold;">🔴 Kosong</span>
+            <span v-else-if="statusType === 'menipis'" style="color: #f59e0b; background: rgba(245,158,11,0.1); padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: bold;">🟠 Menipis</span>
+            <span v-else style="color: #10b981; background: rgba(16,185,129,0.1); padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: bold;">🟢 Aman</span>
+        </span>
+    </template>
+
+    <!-- Stok Table Template -->
+    <template id="tpl-stock">
+        <div>
+            <header class="animate-fade-in" style="margin-bottom: 2rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                    <div>
+                        <h1>Stok Bahan Ajar</h1>
+                        <p style="color: var(--text-muted);">Manajemen stok, pembaruan kuantitas, dan pencatatan buku bahan ajar.</p>
+                    </div>
+                    <div class="stat-badge glass-card">
+                        <span>{{ stok.length }} Total Buku</span>
+                    </div>
+                </div>
+                
+                <div class="glass-card" style="margin-top: 1.5rem; padding: 1.25rem; display: flex; flex-direction: column; gap: 1rem;">
+                    <div style="display: flex; align-items: center; gap: 1rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 1rem;">
+                        <span style="font-size: 1.2rem; opacity: 0.5;">🔍</span>
+                        <input type="text" v-model="searchQuery" placeholder="Cari nama buku atau kode barang..." style="width: 100%; border: none; background: transparent; outline: none; font-size: 1rem; color: var(--text-main);">
+                    </div>
+                    
+                    <div style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: center;">
+                        <select v-model="filterUpbjj" class="form-control" style="width: auto; background-color: var(--card-bg); color: var(--text-main);">
+                            <option value="">Semua UT-Daerah</option>
+                            <option v-for="upbjj in upbjjList" :value="upbjj">{{ upbjj }}</option>
+                        </select>
+
+                        <select v-if="filterUpbjj" v-model="filterKategori" class="form-control" style="width: auto; background-color: var(--card-bg); color: var(--text-main);">
+                            <option value="">Semua Kategori</option>
+                            <option v-for="kategori in kategoriList" :value="kategori">{{ kategori }}</option>
+                        </select>
+
+                        <select v-model="sortBy" class="form-control" style="width: auto; background-color: var(--card-bg); color: var(--text-main);">
+                            <option value="">Urutkan Berdasarkan...</option>
+                            <option value="judul">Judul (A-Z)</option>
+                            <option value="qty">Stok (Terkecil - Terbesar)</option>
+                            <option value="harga">Harga (Termurah - Termahal)</option>
+                        </select>
+
+                        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                            <input type="checkbox" v-model="filterReorder">
+                            <span style="color: var(--warning);">Perlu Reorder</span>
+                        </label>
+
+                        <button @click="resetFilter" class="btn btn-secondary" style="margin-left: auto;">Reset Filter</button>
+                        <button v-if="isAdmin" @click="openAddForm" class="btn btn-primary">+ Tambah Buku</button>
+                    </div>
+                </div>
+            </header>
+
+            <div style="overflow-x: auto;" class="glass-card animate-fade-in">
+                <table style="width: 100%; text-align: left; border-collapse: collapse;">
+                    <thead>
+                        <tr style="border-bottom: 1px solid rgba(255,255,255,0.1);">
+                            <th style="padding: 1rem; width: 60px;">No</th>
+                            <th style="padding: 1rem;">Kode</th>
+                            <th style="padding: 1rem;">Judul</th>
+                            <th style="padding: 1rem;">Kategori</th>
+                            <th style="padding: 1rem;">UT-Daerah</th>
+                            <th style="padding: 1rem;">Lokasi Rak</th>
+                            <th style="padding: 1rem;">Harga</th>
+                            <th style="padding: 1rem;">Qty</th>
+                            <th style="padding: 1rem;">Safety</th>
+                            <th style="padding: 1rem;">Status</th>
+                            <th v-if="isAdmin" style="padding: 1rem;">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-if="filteredAndSortedStok.length === 0">
+                            <td colspan="11" style="text-align: center; padding: 2rem;">Data tidak ditemukan.</td>
+                        </tr>
+                        <tr v-for="(item, index) in filteredAndSortedStok" :key="item.kode" style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                            <td style="padding: 1rem; color: var(--text-muted);">{{ index + 1 }}</td>
+                            <td style="padding: 1rem; font-weight: 600;">{{ item.kode }}</td>
+                            <td style="padding: 1rem;">
+                                <div style="font-weight: 600;">{{ item.judul }}</div>
+                                <div style="font-size: 0.75rem; color: var(--text-muted);" v-html="item.catatanHTML"></div>
+                            </td>
+                            <td style="padding: 1rem;">{{ item.kategori }}</td>
+                            <td style="padding: 1rem;">{{ item.upbjj }}</td>
+                            <td style="padding: 1rem;">{{ item.lokasiRak }}</td>
+                            <td style="padding: 1rem;">{{ item.harga | currency }}</td>
+                            <td style="padding: 1rem;">{{ item.qty }}</td>
+                            <td style="padding: 1rem;">{{ item.safety }}</td>
+                            <td style="padding: 1rem;">
+                                <status-badge :qty="item.qty" :safety="item.safety"></status-badge>
+                            </td>
+                            <td v-if="isAdmin" style="padding: 1rem;">
+                                <button @click="openEditForm(item)" class="btn btn-secondary" style="padding: 0.25rem 0.75rem; font-size: 0.875rem; margin-right: 0.5rem;">Edit</button>
+                                <button @click="deleteStok(item.kode)" class="btn btn-secondary" style="padding: 0.25rem 0.75rem; font-size: 0.875rem; background: rgba(239,68,68,0.1); color: #ef4444; border-color: rgba(239,68,68,0.2);">Hapus</button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Modal Form -->
+            <div class="modal" :class="{ active: showFormModal }">
+                <div class="modal-content animate-fade-in" style="max-width: 600px; max-height: 90vh; overflow-y: auto;">
+                    <div class="modal-close" @click="closeForm">&times;</div>
+                    <div class="modal-body" style="flex-direction: column; padding: 2.5rem;">
+                        <h2 style="margin-bottom: 1.5rem; color: var(--primary);">{{ isEditing ? 'Edit Bahan Ajar' : 'Tambah Bahan Ajar' }}</h2>
+                        
+                        <div v-show="formError" style="background: rgba(239,68,68,0.1); color: #ef4444; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">{{ formError }}</div>
+
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                            <div>
+                                <label style="display: block; margin-bottom: 0.5rem;">Kode Barang</label>
+                                <input type="text" v-model="formItem.kode" class="form-control" :disabled="isEditing">
+                            </div>
+                            <div>
+                                <label style="display: block; margin-bottom: 0.5rem;">Judul</label>
+                                <input type="text" v-model="formItem.judul" class="form-control">
+                            </div>
+                            <div>
+                                <label style="display: block; margin-bottom: 0.5rem;">UT-Daerah</label>
+                                <select v-model="formItem.upbjj" class="form-control" style="background-color: var(--card-bg); color: var(--text-main);">
+                                    <option v-for="u in upbjjList" :value="u">{{ u }}</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style="display: block; margin-bottom: 0.5rem;">Kategori</label>
+                                <select v-model="formItem.kategori" class="form-control" style="background-color: var(--card-bg); color: var(--text-main);">
+                                    <option v-for="k in kategoriList" :value="k">{{ k }}</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style="display: block; margin-bottom: 0.5rem;">Lokasi Rak</label>
+                                <input type="text" v-model="formItem.lokasiRak" class="form-control">
+                            </div>
+                            <div>
+                                <label style="display: block; margin-bottom: 0.5rem;">Harga</label>
+                                <input type="number" v-model.number="formItem.harga" class="form-control">
+                            </div>
+                            <div>
+                                <label style="display: block; margin-bottom: 0.5rem;">Qty</label>
+                                <input type="number" v-model.number="formItem.qty" class="form-control">
+                            </div>
+                            <div>
+                                <label style="display: block; margin-bottom: 0.5rem;">Safety Stock</label>
+                                <input type="number" v-model.number="formItem.safety" class="form-control">
+                            </div>
+                            <div style="grid-column: 1 / -1;">
+                                <label style="display: block; margin-bottom: 0.5rem;">Catatan HTML</label>
+                                <input type="text" v-model="formItem.catatanHTML" class="form-control">
+                            </div>
+                        </div>
+
+                        <div style="margin-top: 2rem; display: flex; justify-content: flex-end; gap: 1rem;">
+                            <button @click="closeForm" class="btn btn-secondary">Batal</button>
+                            <button @click="saveForm" class="btn btn-primary">Simpan</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <!-- Tracking DO Template -->
+    <template id="tpl-tracking">
+        <div>
+            <div class="tracking-header animate-fade-in" style="margin-bottom: 2rem;">
+                <h1>Lacak Pengiriman</h1>
+                <p style="color: var(--text-muted);">Masukkan nomor DO atau NIM untuk melihat status perjalanan paket.</p>
+            </div>
+
+            <div class="search-box animate-fade-in" style="display: flex; gap: 1rem;">
+                <input type="text" v-model="searchDO" @keyup.enter="doSearch" class="form-control" placeholder="Contoh: DO2025-0001...">
+                <button @click="doSearch" class="btn btn-primary">Lacak Sekarang</button>
+            </div>
+
+            <div class="animate-fade-in glass-card" style="margin-top: 2rem; padding: 1.5rem;" v-if="myTrackingList.length > 0 && !searchResult && !showError">
+                <h3 style="margin-bottom: 1rem;">{{ isAdmin ? 'Semua Delivery Order' : 'Riwayat Delivery Order Saya' }}</h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1rem;">
+                    <div v-for="doItem in myTrackingList" :key="doItem.noDO" @click="viewDO(doItem.noDO)" class="stat-card" style="cursor: pointer; background: rgba(255,255,255,0.05); padding: 1rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); transition: all 0.3s ease;">
+                        <div style="font-weight: 700; color: var(--primary); margin-bottom: 0.5rem;">{{ doItem.noDO }}</div>
+                        <div style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: 0.25rem;">Penerima: {{ doItem.nama }}</div>
+                        <div style="font-size: 0.875rem; color: var(--text-muted);">Status: <span style="color: var(--success); font-weight: 600;">{{ doItem.status }}</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <div v-if="searchResult" class="animate-fade-in" style="margin-top: 2rem;">
+                <div class="stats-grid" style="margin-bottom: 2rem;">
+                    <div class="stat-card glass-card">
+                        <span style="color: var(--text-muted); font-weight: 500;">Status</span>
+                        <span class="badge badge-success" style="width: fit-content; margin-top: 0.5rem; font-size: 1.25rem;">{{ searchResult.status }}</span>
+                    </div>
+                    <div class="stat-card glass-card">
+                        <span style="color: var(--text-muted); font-weight: 500;">Penerima</span>
+                        <span style="font-size: 1.5rem; font-weight: 700;">{{ searchResult.nama }}</span>
+                    </div>
+                    <div class="stat-card glass-card">
+                        <span style="color: var(--text-muted); font-weight: 500;">Ekspedisi</span>
+                        <span style="font-size: 1.5rem; font-weight: 700;">{{ searchResult.ekspedisi }}</span>
+                    </div>
+                </div>
+
+                <div class="glass-card" style="padding: 2rem;">
+                    <h3 style="margin-bottom: 1.5rem;">Informasi & Riwayat Perjalanan</h3>
+                    <div style="background: rgba(79, 70, 229, 0.05); padding: 1rem; border-radius: 8px; margin-bottom: 2rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem;">
+                        <div v-for="(value, key) in getDetailObject(searchResult)" :key="key">
+                            <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">{{ key }}</div>
+                            <div style="font-weight: 600;">{{ value }}</div>
+                        </div>
+                    </div>
+
+                    <div class="timeline">
+                        <div v-for="(step, index) in searchResult.perjalanan" :key="index" class="timeline-item">
+                            <div class="timeline-dot"></div>
+                            <div class="timeline-content">
+                                <div class="timeline-time">{{ step.waktu }}</div>
+                                <h4>{{ step.keterangan }}</h4>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div v-if="isAdmin" style="margin-top: 2rem; padding-top: 2rem; border-top: 1px solid rgba(255,255,255,0.1);">
+                        <h4 style="margin-bottom: 1rem;">Update Status (Admin)</h4>
+                        <div style="display: flex; gap: 1rem;">
+                            <input type="text" v-model="updateKeterangan" class="form-control" placeholder="Keterangan progress...">
+                            <button @click="submitUpdate" class="btn btn-primary" style="white-space: nowrap;">Update Progress</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="margin-top: 1rem; text-align: center;">
+                    <button @click="clearSearch" class="btn btn-secondary">Tutup Hasil (Esc)</button>
+                </div>
+            </div>
+
+            <div v-show="showError" class="glass-card animate-fade-in" style="padding: 3rem; text-align: center; margin-top: 2rem;">
+                <div style="font-size: 3rem; margin-bottom: 1rem;">📦</div>
+                <p style="font-size: 1.125rem; color: var(--text-muted);">Maaf, nomor DO tidak ditemukan atau Anda tidak memiliki akses.</p>
+            </div>
+        </div>
+    </template>
+
+    <!-- Order Form Template -->
+    <template id="tpl-order-form">
+        <div class="glass-card animate-fade-in" style="padding: 2.5rem; max-width: 800px; margin: 0 auto;">
+            <h2 style="margin-bottom: 1.5rem; color: var(--primary);">Buat Delivery Order (DO) Baru</h2>
+            
+            <div v-show="errorMsg" style="background: rgba(239,68,68,0.1); color: #ef4444; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">{{ errorMsg }}</div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+                <div>
+                    <label style="display: block; margin-bottom: 0.5rem;">Nomor DO</label>
+                    <input type="text" v-model="form.noDO" class="form-control" disabled style="background: rgba(255,255,255,0.05);">
+                </div>
+                <div>
+                    <label style="display: block; margin-bottom: 0.5rem;">Tanggal Kirim</label>
+                    <input type="date" v-model="form.tanggalKirim" class="form-control">
+                </div>
+                <div>
+                    <label style="display: block; margin-bottom: 0.5rem;">NIM Mahasiswa</label>
+                    <input type="text" v-model="form.nim" class="form-control" placeholder="Cth: 123456789">
+                </div>
+                <div>
+                    <label style="display: block; margin-bottom: 0.5rem;">Nama Penerima</label>
+                    <input type="text" v-model="form.nama" class="form-control" placeholder="Nama lengkap">
+                </div>
+                <div>
+                    <label style="display: block; margin-bottom: 0.5rem;">Ekspedisi</label>
+                    <select v-model="form.ekspedisi" class="form-control" style="background-color: var(--card-bg); color: var(--text-main);">
+                        <option value="" disabled>Pilih Ekspedisi</option>
+                        <option v-for="eks in pengirimanList" :value="eks.nama">{{ eks.kode }} - {{ eks.nama }}</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="display: block; margin-bottom: 0.5rem;">Paket Bahan Ajar</label>
+                    <select v-model="form.paketKode" class="form-control" style="background-color: var(--card-bg); color: var(--text-main);">
+                        <option value="" disabled>Pilih Paket</option>
+                        <option v-for="p in paketList" :value="p.kode">{{ p.kode }} - {{ p.nama }}</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div v-if="selectedPaket" class="animate-fade-in" style="margin-top: 1.5rem; padding: 1rem; background: rgba(79, 70, 229, 0.05); border-radius: 8px; border-left: 4px solid var(--primary);">
+                <h4 style="margin-bottom: 0.5rem; color: var(--text-main);">Detail Paket Terpilih:</h4>
+                <ul style="margin-bottom: 1rem; padding-left: 1.5rem; color: var(--text-muted);">
+                    <li v-for="isi in selectedPaket.isi" :key="isi">Kode Buku: {{ isi }}</li>
+                </ul>
+                <div style="font-weight: 700; font-size: 1.1rem; color: var(--primary);">Total Harga: {{ calculatedTotal | currency }}</div>
+            </div>
+
+            <div style="margin-top: 2rem; display: flex; justify-content: flex-end;">
+                <button @click="handleSubmit" class="btn btn-primary" style="padding: 0.75rem 2rem;">Simpan DO Baru</button>
+            </div>
+        </div>
+    </template>
+
+    <!-- Vue.js -->
+    <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
+    
+    <!-- Services & Components -->
+    <script src="js/services/api.js"></script>
+    <script src="js/components/login-form.js"></script>
+    <script src="js/components/status-badge.js"></script>
+    <script src="js/components/stock-table.js"></script>
+    <script src="js/components/do-tracking.js"></script>
+    <script src="js/components/order-form.js"></script>
+    
+    <!-- App -->
+    <script src="js/app.js"></script>
+</body>
+</html>

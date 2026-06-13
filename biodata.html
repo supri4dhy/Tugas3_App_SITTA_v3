@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Biodata Mahasiswa</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        body {
+            background: white;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .container-wrapper {
+            display: flex;
+            width: 300%; /* Tiga halaman */
+            height: 100vh;
+            transition: transform 0.6s cubic-bezier(0.85, 0, 0.15, 1);
+        }
+
+        .page {
+            width: 33.3333%;
+            height: 100%;
+            display: flex;
+            position: relative;
+        }
+
+        /* Page 1: Biodata */
+        .biodata-card {
+            display: flex;
+            width: 100%;
+            height: 100%;
+        }
+
+        .biodata-img {
+            flex: 0 0 35%;
+            background: #f1f5f9;
+            overflow: hidden;
+        }
+
+        .biodata-img img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.5s ease;
+        }
+
+        .page:hover .biodata-img img {
+            transform: scale(1.05);
+        }
+
+        .biodata-info {
+            flex: 1;
+            padding: 3rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        /* Page 2: Purpose */
+        .purpose-page {
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            padding: 3rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+
+        .info-title {
+            color: var(--primary);
+            margin-bottom: 1.5rem;
+            border-bottom: 3px solid var(--accent);
+            display: inline-block;
+            padding-bottom: 5px;
+            font-size: 1.8rem;
+            font-weight: 800;
+        }
+
+        .info-item {
+            margin-bottom: 1.25rem;
+            border-bottom: 1px solid #f1f5f9;
+            padding-bottom: 0.75rem;
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeInUp 0.5s forwards;
+        }
+
+        @keyframes fadeInUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .info-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            margin-bottom: 0.25rem;
+        }
+
+        .info-value {
+            font-weight: 600;
+            color: var(--text-main);
+            font-size: 1.2rem;
+        }
+
+        .purpose-text {
+            font-size: 1.2rem;
+            line-height: 1.8;
+            color: var(--text-main);
+            max-width: 600px;
+            margin-bottom: 2rem;
+            padding: 2.5rem;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+            border-left: 5px solid var(--primary);
+            position: relative;
+            max-height: 55vh;
+            overflow-y: auto;
+        }
+
+        /* Custom Scrollbar untuk purpose-text */
+        .purpose-text::-webkit-scrollbar {
+            width: 8px;
+        }
+        .purpose-text::-webkit-scrollbar-track {
+            background: transparent;
+            margin: 10px 0;
+        }
+        .purpose-text::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+        }
+        .purpose-text::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        .purpose-text::before {
+            content: '"';
+            position: absolute;
+            top: 10px;
+            left: 20px;
+            font-size: 4rem;
+            color: rgba(0, 61, 121, 0.05);
+            font-family: serif;
+        }
+
+        /* Navigation Buttons */
+        .nav-btn {
+            position: absolute;
+            bottom: 2.5rem;
+            right: 2.5rem;
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.8rem 1.8rem;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.3s;
+            box-shadow: 0 4px 12px rgba(0, 61, 121, 0.2);
+            z-index: 10;
+        }
+
+        .nav-btn:hover {
+            background: var(--primary-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0, 61, 121, 0.3);
+        }
+
+        .nav-btn.back {
+            right: auto;
+            left: 2.5rem;
+        }
+
+        .step-indicator {
+            position: absolute;
+            bottom: 2.7rem;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #cbd5e1;
+            transition: all 0.3s;
+        }
+
+        .dot.active {
+            width: 30px;
+            background: var(--primary);
+            border-radius: 5px;
+        }
+
+        /* Accordion Tasks */
+        .task-accordion {
+            background: white;
+            border-radius: 8px;
+            margin-bottom: 0.8rem;
+            border: 1px solid #e2e8f0;
+            transition: all 0.3s;
+        }
+        
+        .task-accordion[open] {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            border-color: var(--primary);
+        }
+
+        .task-accordion summary {
+            padding: 1rem 1.2rem;
+            padding-right: 2.5rem;
+            font-weight: 600;
+            color: var(--text-main);
+            font-size: 0.95rem;
+            cursor: pointer;
+            list-style: none;
+            position: relative;
+            outline: none;
+            line-height: 1.5;
+            text-align: justify;
+        }
+
+        .task-accordion summary::-webkit-details-marker {
+            display: none;
+        }
+
+        .task-accordion summary::after {
+            content: '▾';
+            position: absolute;
+            right: 1.2rem;
+            top: 1.2rem;
+            color: var(--primary);
+            font-size: 1.2rem;
+            transition: transform 0.3s;
+        }
+
+        .task-accordion[open] summary::after {
+            transform: rotate(180deg);
+        }
+
+        .task-accordion-body {
+            padding: 0 1.2rem 1.2rem;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            line-height: 1.6;
+            border-top: 1px dashed #e2e8f0;
+            margin-top: 0.5rem;
+            padding-top: 1rem;
+        }
+
+        @media (max-width: 600px) {
+            .biodata-card {
+                flex-direction: column;
+            }
+            .biodata-img {
+                height: 180px;
+                flex: none;
+            }
+            .biodata-img img {
+                object-position: top center;
+            }
+            .biodata-info {
+                padding: 1.25rem 1.25rem 5rem 1.25rem;
+                overflow-y: auto;
+                max-height: calc(100vh - 180px);
+                width: 100%;
+            }
+            .info-title {
+                font-size: 1.4rem;
+                margin-bottom: 1rem;
+            }
+            .info-item {
+                margin-bottom: 0.75rem;
+                padding-bottom: 0.5rem;
+            }
+            .info-label {
+                font-size: 0.7rem;
+            }
+            .info-value {
+                font-size: 1.05rem;
+            }
+            .nav-btn {
+                bottom: 1rem;
+                right: 1rem;
+                padding: 0.6rem 1.2rem;
+                font-size: 0.85rem;
+            }
+            .nav-btn.back {
+                left: 1rem;
+            }
+            .step-indicator {
+                bottom: 1.2rem;
+            }
+            .purpose-page {
+                padding: 1.5rem 1.5rem 5rem 1.5rem;
+            }
+            .purpose-text {
+                font-size: 0.95rem;
+                padding: 1.25rem;
+                margin-bottom: 1rem;
+                max-height: 55vh;
+            }
+            .purpose-text::before {
+                top: 5px;
+                left: 10px;
+                font-size: 2.5rem;
+            }
+            .task-accordion summary {
+                font-size: 0.85rem;
+                padding: 0.8rem 1rem;
+                padding-right: 2rem;
+            }
+            .task-accordion summary::after {
+                right: 0.8rem;
+                top: 0.8rem;
+            }
+            .task-accordion-body {
+                font-size: 0.8rem;
+                padding: 0 1rem 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container-wrapper" id="wrapper">
+        <!-- Halaman 1: Biodata -->
+        <div class="page">
+            <div class="biodata-card">
+                <div class="biodata-img">
+                    <img src="img/fotoku.png" alt="Foto Profil">
+                </div>
+                <div class="biodata-info">
+                    <h2 class="info-title">Identitas Mahasiswa</h2>
+                    
+                    <div class="info-item" style="animation-delay: 0.1s;">
+                        <div class="info-label">Nama Lengkap</div>
+                        <div class="info-value">SUPRIADI</div>
+                    </div>
+                    
+                    <div class="info-item" style="animation-delay: 0.2s;">
+                        <div class="info-label">NIM</div>
+                        <div class="info-value" style="color: var(--primary); letter-spacing: 1px;">048377053</div>
+                    </div>
+                    
+                    <div class="info-item" style="animation-delay: 0.3s;">
+                        <div class="info-label">Program Studi</div>
+                        <div class="info-value">Sistem Informasi</div>
+                    </div>
+                    
+                    <div class="info-item" style="animation-delay: 0.4s;">
+                        <div class="info-label">UPBJJ UT</div>
+                        <div class="info-value">Palangka Raya</div>
+                    </div>
+                    
+                    <div class="info-item" style="animation-delay: 0.5s;">
+                        <div class="info-label">Fakultas</div>
+                        <div class="info-value">Fakultas Sains dan Teknologi</div>
+                    </div>
+                </div>
+            </div>
+            <button class="nav-btn" onclick="goToPage(1)">Informasi Tugas ➔</button>
+            <div class="step-indicator">
+                <div class="dot active"></div>
+                <div class="dot" onclick="goToPage(1)" style="cursor: pointer;"></div>
+                <div class="dot" onclick="goToPage(2)" style="cursor: pointer;"></div>
+            </div>
+        </div>
+
+        <!-- Halaman 2: Tujuan -->
+        <div class="page purpose-page">
+            <h2 class="info-title">Tujuan Website</h2>
+            <div class="purpose-text">
+                Tujuan dari pembuatan website ini adalah untuk memenuhi <strong>Tugas Praktik 3</strong> Mata Kuliah <br>
+                <span style="color: var(--primary); font-weight: 700; font-size: 1.3rem;">"Pemrograman Berbasis Web - STSI4209"</span><br>
+                Universitas Terbuka.
+            </div>
+            <div style="background: white; padding: 2rem; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); width: 100%; max-width: 500px;">
+                <div class="info-label">Dosen Pembimbing</div>
+                <div class="info-value" style="font-size: 1.4rem; color: var(--primary);">Bapak Mairinal Avis, S.Kom., M.Kom.</div>
+            </div>
+            
+            <button class="nav-btn back" onclick="goToPage(0)">⬅ Kembali</button>
+            <button class="nav-btn" onclick="goToPage(2)">Detail Tugas 3 ➔</button>
+            <div class="step-indicator">
+                <div class="dot" onclick="goToPage(0)" style="cursor: pointer;"></div>
+                <div class="dot active"></div>
+                <div class="dot" onclick="goToPage(2)" style="cursor: pointer;"></div>
+            </div>
+        </div>
+
+        <!-- Halaman 3: Penjelasan Tugas 3 -->
+        <div class="page purpose-page">
+            <h2 class="info-title">Penjelasan Tugas 3</h2>
+            <div class="purpose-text" style="text-align: left; font-size: 1.05rem; line-height: 1.7; max-width: 750px; padding: 2rem;">
+                <h3 style="color: var(--primary); margin-top: 0; margin-bottom: 1rem; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px;">Capaian Tugas 3 (Vue.js SPA)</h3>
+                
+                <details class="task-accordion">
+                    <summary>1. Penerapan Sistem Pengorganisasian Kode dengan Vue Component & Template</summary>
+                    <div class="task-accordion-body">
+                        <strong>Penerapan:</strong> Aplikasi menggunakan arsitektur Single Page Application (SPA). Struktur proyek diorganisasikan dengan baik menggunakan Vue Components (seperti <code>stock-table</code>, <code>do-tracking</code>, <code>order-form</code>, <code>status-badge</code>, dan <code>app-modal</code>) serta Vue Templates terpisah untuk mempermudah pemeliharaan kode.
+                    </div>
+                </details>
+
+                <details class="task-accordion">
+                    <summary>2. Penerapan Fungsi Menampilkan Data (Mustaches / Directive v-text & v-html)</summary>
+                    <div class="task-accordion-body">
+                        <strong>Penerapan:</strong> Menggunakan sintaks ekspresi kumis (mustaches <code>{{ }}</code>) dan directive <code>v-text</code> untuk menampilkan informasi teks dinamis. Directive <code>v-html</code> secara spesifik digunakan untuk merender data deskripsi berformat HTML seperti <code>catatanHTML</code> yang muncul sebagai tooltip interaktif.
+                    </div>
+                </details>
+
+                <details class="task-accordion">
+                    <summary>3. Penerapan Fungsi Conditional Rendering (v-if / v-else-if / v-else / v-show)</summary>
+                    <div class="task-accordion-body">
+                        <strong>Penerapan:</strong> Menggunakan directive <code>v-if</code>, <code>v-else-if</code>, dan <code>v-else</code> pada status ketersediaan stok untuk menampilkan label status ("Aman", "Menipis", "Kosong") dengan gaya warna yang dinamis. Directive <code>v-show</code> diimplementasikan untuk mengatur visibilitas tab navigasi halaman SPA secara instan.
+                    </div>
+                </details>
+
+                <details class="task-accordion">
+                    <summary>4. Penerapan Data Binding & Property Pengolah Data (v-bind / v-model & Computed / Methods)</summary>
+                    <div class="task-accordion-body">
+                        <strong>Penerapan:</strong> Menggunakan <code>v-bind</code> untuk mengikat atribut HTML secara dinamis dan <code>v-model</code> untuk Two-Way Data Binding pada formulir input. Pengolahan data dioptimalkan dengan <code>computed property</code> untuk filter, pengurutan stok, dan penghitungan total harga pesanan, serta <code>methods</code> untuk logika aksi seperti manipulasi data (CRUD) dan pencarian.
+                    </div>
+                </details>
+
+                <details class="task-accordion">
+                    <summary>5. Penerapan Fungsi Watcher untuk Reaksi Perubahan Data</summary>
+                    <div class="task-accordion-body">
+                        <strong>Penerapan:</strong> Menggunakan <code>watchers</code> untuk memantau perubahan variabel secara reaktif. Contohnya digunakan untuk memantau perubahan pilihan filter "UT-Daerah" yang akan memperbarui filter dependen "Kategori Mata Kuliah", serta memantau perubahan input lainnya untuk sinkronisasi state.
+                    </div>
+                </details>
+
+                <details class="task-accordion">
+                    <summary>6. Penerapan Pengolahan Data Array Melalui Directive v-for</summary>
+                    <div class="task-accordion-body">
+                        <strong>Penerapan:</strong> Menggunakan directive <code>v-for</code> untuk merender list data array secara berulang dan efisien, baik untuk daftar stok bahan ajar (menggunakan index angka / zero-based number index) maupun pengulangan opsi dropdown berbasis key-value.
+                    </div>
+                </details>
+
+                <details class="task-accordion">
+                    <summary>7. Penerapan Formatting Data Teks Menggunakan Konsep Filter</summary>
+                    <div class="task-accordion-body">
+                        <strong>Penerapan:</strong> Menggunakan fitur <code>filters</code> pada Vue.js untuk memformat tampilan data tekstual agar lebih rapi, seperti menambahkan simbol mata uang rupiah (<code>Rp</code>) pada nominal harga serta menambahkan satuan (<code>buah</code>) di belakang jumlah stok dan safety stock.
+                    </div>
+                </details>
+
+                <details class="task-accordion">
+                    <summary>8. Penerapan Penggunaan Custom Element, Vue Component, dan Property Template</summary>
+                    <div class="task-accordion-body">
+                        <strong>Penerapan:</strong> Mererefaktor struktur halaman web menjadi elemen kustom berbasis komponen Vue (misal: <code>&lt;ba-stock-table&gt;</code>, <code>&lt;do-tracking&gt;</code>, dll.) yang memiliki properti template terpisah, menghasilkan struktur kode modular yang mudah digunakan kembali.
+                    </div>
+                </details>
+            </div>
+            
+            <button class="nav-btn back" onclick="goToPage(1)">⬅ Kembali</button>
+            <button onclick="closeOrNavigate()" class="nav-btn" style="right: 2.5rem; background: var(--success); border: none;">Tutup Modal ➔</button>
+            
+            <div class="step-indicator">
+                <div class="dot" onclick="goToPage(0)" style="cursor: pointer;"></div>
+                <div class="dot" onclick="goToPage(1)" style="cursor: pointer;"></div>
+                <div class="dot active"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const wrapper = document.getElementById('wrapper');
+        const totalPages = 3;
+        
+        function goToPage(index) {
+            const percentage = -(index * (100 / totalPages));
+            wrapper.style.transform = `translateX(${percentage}%)`;
+        }
+
+        function closeOrNavigate() {
+            // Coba klik tombol close modal milik parent window jika dibuka via iframe
+            if (window.parent && window.parent.document.querySelector('.modal-close')) {
+                window.parent.document.querySelector('.modal-close').click();
+            } else {
+                window.location.href = 'index.html';
+            }
+        }
+    </script>
+</body>
+</html>
